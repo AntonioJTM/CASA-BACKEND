@@ -1,6 +1,6 @@
-# META-BACKEND
+# CASA-BACKEND
 
-Backend API desarrollado con Node.js y Express para el sistema META. Incluye comunicación en tiempo real mediante Socket.IO, conexión a base de datos MySQL y un sistema robusto de manejo de errores.
+Backend API desarrollado con Node.js y Express para el sistema CASA. Incluye comunicación en tiempo real mediante Socket.IO, conexión a base de datos MySQL y un sistema robusto de manejo de errores.
 
 ## 📋 Tabla de Contenidos
 
@@ -63,7 +63,7 @@ Backend API desarrollado con Node.js y Express para el sistema META. Incluye com
 
 ```bash
 git clone <url-del-repositorio>
-cd META-BACKEND
+cd CASA-BACKEND
 ```
 
 2. **Instalar dependencias**
@@ -83,20 +83,20 @@ NODE_ENV=development
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 
 # Base de Datos - Desarrollo
-META_HOST_DEV=localhost
-META_PORT_DEV=3306
-META_DATABASE_DEV=meta_db_dev
-META_USERNAME_DEV=usuario
-META_PASSWORD_DEV=contraseña
-META_DIALECT_DEV=mysql
+CASA_HOST_DEV=localhost
+CASA_PORT_DEV=3306
+CASA_DATABASE_DEV=casa_db_dev
+CASA_USERNAME_DEV=usuario
+CASA_PASSWORD_DEV=contraseña
+CASA_DIALECT_DEV=mysql
 
 # Base de Datos - Producción
-META_HOST=localhost
-META_PORT=3306
-META_DATABASE=meta_db
-META_USERNAME=usuario
-META_PASSWORD=contraseña
-META_DIALECT=mysql
+CASA_HOST=localhost
+CASA_PORT=3306
+CASA_DATABASE=casa_db
+CASA_USERNAME=usuario
+CASA_PASSWORD=contraseña
+CASA_DIALECT=mysql
 ```
 
 ## ⚙️ Configuración
@@ -121,7 +121,7 @@ El API tiene un limitador de tasa configurado:
 ## 📁 Estructura del Proyecto
 
 ```
-META-BACKEND/
+CASA-BACKEND/
 ├── config/
 │   ├── config.js          # Configuración de base de datos
 │   └── pool.js            # Pool de conexiones MySQL
@@ -157,20 +157,20 @@ NODE_ENV=production node index.js
 
 ### Base URL
 
-Todas las rutas están prefijadas con `/mapa/v1/`
+Todas las rutas están prefijadas con `/casa/v1/`
 
 ### Rutas Disponibles
 
 #### Autenticación
-- **Base**: `/mapa/v1/login/`
+- **Base**: `/casa/v1/login/`
 - Rutas definidas en `routes/routes-login.js`
 
 #### Usuarios
-- **Base**: `/mapa/v1/users/`
+- **Base**: `/casa/v1/users/`
 - Rutas definidas en `routes/routes-users.js`
 
 #### Administración
-- **Base**: `/mapa/v1/admin/`
+- **Base**: `/casa/v1/admin/`
 - Rutas definidas en `routes/routes-admin.js`
 
 ### Archivos Estáticos
@@ -290,10 +290,6 @@ req.db.query('SELECT * FROM tabla', (err, results) => {
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia ISC.
-
-## 👤 Autor
-
-[Antonio de jesus Tristan o Editorial Vortex]
 
 ---
 
