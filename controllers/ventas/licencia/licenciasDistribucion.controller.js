@@ -1,5 +1,8 @@
+/** El dashboard de ventas solo contempla licencias individuales */
+const TIPO_LICENCIA = 'INDIVIDUAL';
+
 const sqlDistribucion = `
-    SELECT 
+    SELECT
         CASE LIC_STATUS
             WHEN 1 THEN 'Activa'
             WHEN 2 THEN 'Desactivada'
@@ -8,6 +11,7 @@ const sqlDistribucion = `
         END AS status,
         COUNT(*) AS count
     FROM CAS_LICENCIA
+    WHERE LIC_TIPO = ?
     GROUP BY LIC_STATUS
 `;
 
@@ -16,7 +20,7 @@ const sqlDistribucion = `
  * Útil para actualización en tiempo real del dashboard.
  */
 exports.fetchDistribucion = (db, callback) => {
-    db.query(sqlDistribucion, (err, rows) => {
+    db.query(sqlDistribucion, [TIPO_LICENCIA], (err, rows) => {
         if (err) return callback(err, null);
         const porEstado = rows || [];
         const total = porEstado.reduce((sum, row) => sum + (row.count || 0), 0);
@@ -31,7 +35,7 @@ exports.fetchDistribucion = (db, callback) => {
  * LIC_STATUS: 1=Activa, 2=Desactivada, 3=Vencida
  */
 exports.getLicenciasDistribucion = (req, res) => {
-    req.db.query(sqlDistribucion, (err, rows) => {
+    req.db.query(sqlDistribucion, [TIPO_LICENCIA], (err, rows) => {
         if (err) {
             console.error('Error getLicenciasDistribucion:', err);
             return res.status(500).json({
