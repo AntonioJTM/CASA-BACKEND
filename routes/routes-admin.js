@@ -24,7 +24,9 @@ const { generarLicencias } = require('../controllers/ventas/licencia/generarLice
 const { getLicenciasCompletas } = require('../controllers/ventas/licencia/licenciasCompletas.controller');
 const { updateLicenciaStatus } = require('../controllers/ventas/licencia/updateLicenciaStatus.controller');
 const { getLicenciasDistribucion } = require('../controllers/ventas/licencia/licenciasDistribucion.controller');
+const { exportarLicencias } = require('../controllers/ventas/licencia/exportarLicencias.controller');
 const { getPedidosCompletos } = require('../controllers/ventas/pedido/pedidosCompletos.controller');
+const { getPlantillaLicenciaPedido } = require('../controllers/ventas/pedido/plantillaLicenciaPedido.controller');
 const materiasController = require('../controllers/ADMIN/multimedia/materias.controllers');
 
 module.exports = () => {
@@ -43,9 +45,13 @@ module.exports = () => {
     router.post('/licencias', generarLicencias);
     router.get('/licencias-completas', getLicenciasCompletas);
     router.get('/licencias-distribucion', getLicenciasDistribucion);
+    // Antes de '/licencias/:id/status' no hay conflicto, pero mantenerla arriba evita
+    // que una futura ruta con parámetro capture 'exportar'.
+    router.get('/licencias/exportar', exportarLicencias);
     router.put('/licencias/:id/status', updateLicenciaStatus);
 
     router.get('/pedidos-completos', getPedidosCompletos);
+    router.get('/pedidos/:id/plantilla-licencia', getPlantillaLicenciaPedido);
 
     router.get('/filter-grados', filtros.getGradosFilter);
     router.get('/filter-subtipos', filtros.getSubtipoFilter);

@@ -12,7 +12,8 @@ exports.getPedidosCompletos = (req, res) => {
             p.PDD_SOLICITANTE AS solicitante,
             p.PDD_FECHA_REGISTRO AS fechaRegistro,
             COALESCE(u.UAD_NOMBRE, 'Sin usuario') AS usuarioNombre,
-            p.PDD_UAD_ID AS uadId
+            p.PDD_UAD_ID AS uadId,
+            (SELECT COUNT(*) FROM CAS_LICENCIA l WHERE l.LIC_PDD_ID = p.PDD_ID) AS cantidadLicencias
         FROM CAS_PEDIDO p
         LEFT JOIN CAS_USUARIO_ADMIN u ON p.PDD_UAD_ID = u.UAD_ID
         ORDER BY p.PDD_ID DESC`,

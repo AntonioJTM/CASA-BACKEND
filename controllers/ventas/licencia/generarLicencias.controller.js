@@ -230,7 +230,8 @@ exports.generarLicencias = (req, res) => {
             pedidoBitacora,
             solicitante,
             uadId,
-            sessionId
+            sessionId,
+            pedidoId
         } = req.body;
 
         const roomId = (sessionId && typeof sessionId === 'string' && sessionId.trim()) ? sessionId.trim() : null;
@@ -271,9 +272,13 @@ exports.generarLicencias = (req, res) => {
             ? solicitante.toString().trim().substring(0, 100) 
             : '';
         
-        const licUadId = (uadId != null && uadId !== '') 
-            ? Number(uadId) 
+        const licUadId = (uadId != null && uadId !== '')
+            ? Number(uadId)
             : ((req.user && (req.user.userId ?? req.user.id)) || 1);
+
+        // Si viene pedidoId, es una ampliación: las licencias se cuelgan de ese pedido.
+        const pedidoIdNum = pedidoId != null && pedidoId !== '' ? Number(pedidoId) : null;
+        const pedidoExistenteId = Number.isInteger(pedidoIdNum) && pedidoIdNum > 0 ? pedidoIdNum : null;
 
         const resolveVenId = (cb) => {
             const num = Number(tipoVenta);
@@ -304,10 +309,16 @@ exports.generarLicencias = (req, res) => {
             const fechaRegistroPedido = new Date().toISOString().slice(0, 10);
 
             const insertarPedido = (cb) => {
+                // Ampliación de un lote existente: se engancha al pedido que ya existe
+                // en lugar de crear uno nuevo con la misma bitácora.
+                if (pedidoExistenteId != null) {
+                    return cb(null, pedidoExistenteId);
+                }
+
                 if (bitacora == null && solicitanteStr === '') {
                     return cb(null, null);
                 }
-                
+
                 req.db.query(
                     'CALL sp_insertar_pedido(?, ?, ?, ?)',
                     [bitacora, solicitanteStr, licUadId, fechaRegistroPedido],
@@ -327,7 +338,8 @@ exports.generarLicencias = (req, res) => {
             };
 
             const emitirPedidoNuevo = (pddId, done) => {
-                if (!pddId || !req.io) return done();
+                // En una ampliación el pedido ya existía: no hay pedido nuevo que anunciar.
+                if (!pddId || !req.io || pedidoExistenteId != null) return done();
                 req.db.query(
                     `SELECT 
                         p.PDD_ID AS id,

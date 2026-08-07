@@ -1,12 +1,15 @@
+const { normalizarColorHex } = require('./colorPaquete');
+
 /**
- * Registra un paquete en CAS_PAQUETE (PAQ_NOMBRE, PAQ_DESCRIPCION, PAQ_PRODUCTOS, PAQ_FECHA_REGISTRO, PAQ_UAD_ID).
- * Body: { nombre, descripcion, productoIds, [id_usuario] }
+ * Registra un paquete en CAS_PAQUETE (PAQ_NOMBRE, PAQ_DESCRIPCION, PAQ_COLOR, PAQ_PRODUCTOS, PAQ_FECHA_REGISTRO, PAQ_UAD_ID).
+ * Body: { nombre, descripcion, productoIds, [color], [id_usuario] }
  * productoIds se guarda como JSON en PAQ_PRODUCTOS (longtext).
+ * color es un hexadecimal '#RRGGBB'; si no viene o es inválido se guarda NULL.
  * Emite evento Socket.IO 'paquete-nuevo' para actualización en tiempo real.
  */
 exports.registrarPaquete = (req, res) => {
     try {
-        const { nombre, descripcion, productoIds, id_usuario } = req.body;
+        const { nombre, descripcion, productoIds, color, id_usuario } = req.body;
 
         if (!nombre || nombre.toString().trim() === '') {
             return res.status(400).json({
@@ -36,13 +39,14 @@ exports.registrarPaquete = (req, res) => {
 
         const nombreVal = nombre.toString().trim().substring(0, 100);
         const descripcionVal = descripcion.toString().trim().substring(0, 100);
+        const colorVal = normalizarColorHex(color);
         const productosJson = JSON.stringify(ids);
         const fechaRegistro = new Date().toISOString().slice(0, 10);
         const uadId = (id_usuario != null && id_usuario !== '') ? Number(id_usuario) : null;
 
         req.db.query(
-            'INSERT INTO CAS_PAQUETE (PAQ_NOMBRE, PAQ_DESCRIPCION, PAQ_PRODUCTOS, PAQ_FECHA_REGISTRO, PAQ_UAD_ID) VALUES (?, ?, ?, ?, ?)',
-            [nombreVal, descripcionVal, productosJson, fechaRegistro, uadId],
+            'INSERT INTO CAS_PAQUETE (PAQ_NOMBRE, PAQ_DESCRIPCION, PAQ_COLOR, PAQ_PRODUCTOS, PAQ_FECHA_REGISTRO, PAQ_UAD_ID) VALUES (?, ?, ?, ?, ?, ?)',
+            [nombreVal, descripcionVal, colorVal, productosJson, fechaRegistro, uadId],
             (error, result) => {
                 if (error) {
                     console.error('Error al registrar paquete:', error);
@@ -61,6 +65,7 @@ exports.registrarPaquete = (req, res) => {
                         p.PAQ_ID AS id,
                         p.PAQ_NOMBRE AS nombre,
                         p.PAQ_DESCRIPCION AS descripcion,
+                        p.PAQ_COLOR AS color,
                         p.PAQ_PRODUCTOS AS productosJson,
                         p.PAQ_FECHA_REGISTRO AS fechaRegistro,
                         COALESCE(u.UAD_NOMBRE, 'Sin usuario') AS usuarioNombre,
@@ -79,6 +84,7 @@ exports.registrarPaquete = (req, res) => {
                                     id: paqueteId,
                                     nombre: nombreVal,
                                     descripcion: descripcionVal,
+                                    color: colorVal,
                                     productoIds: ids
                                 }
                             });
@@ -93,6 +99,7 @@ exports.registrarPaquete = (req, res) => {
                                     id: paqueteId,
                                     nombre: nombreVal,
                                     descripcion: descripcionVal,
+                                    color: colorVal,
                                     productoIds: ids
                                 }
                             });
@@ -130,6 +137,7 @@ exports.registrarPaquete = (req, res) => {
                                 id: row.id,
                                 nombre: row.nombre,
                                 descripcion: row.descripcion,
+                                color: row.color,
                                 fechaRegistro: row.fechaRegistro,
                                 usuarioNombre: row.usuarioNombre,
                                 uadId: row.uadId,
