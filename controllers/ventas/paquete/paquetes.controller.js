@@ -5,7 +5,7 @@
  */
 exports.getPaquetes = (req, res) => {
     req.db.query(
-        'SELECT PAQ_ID AS id, PAQ_NOMBRE AS nombre, PAQ_DESCRIPCION AS descripcion, PAQ_COLOR AS color, PAQ_PRODUCTOS FROM CAS_PAQUETE ORDER BY PAQ_ID',
+        'SELECT PAQ_ID AS id, PAQ_NOMBRE AS nombre, PAQ_DESCRIPCION AS descripcion, PAQ_PRODUCTOS FROM CAS_PAQUETE ORDER BY PAQ_ID',
         [],
         (error, rows) => {
             if (error) {
@@ -31,7 +31,6 @@ exports.getPaquetes = (req, res) => {
                     id: row.id,
                     nombre: row.nombre,
                     descripcion: row.descripcion,
-                    color: row.color,
                     productoIds
                 };
             });

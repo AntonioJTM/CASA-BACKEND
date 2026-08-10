@@ -38,6 +38,22 @@ function slugify(str) {
     .slice(0, 120) || 'producto';
 }
 
+/**
+ * Compara dos valores del producto ignorando el tipo: lo que viene del formulario
+ * son cadenas y lo que devuelve la base puede ser número o NULL.
+ */
+function mismoValor(a, b) {
+  return String(a ?? '') === String(b ?? '');
+}
+
+/** Sube en 1 la versión del producto para avisar al launcher que hay contenido nuevo. */
+const SQL_SUBIR_VERSION = 'UPDATE CAS_PRODUCTOS SET PRO_VERSION = COALESCE(PRO_VERSION, 0) + 1 WHERE PRO_ID = ?';
+
+/** Versión que quedará tras el incremento (los productos viejos sin versión arrancan en 1). */
+function siguienteVersion(versionActual) {
+  return Number(versionActual ?? 0) + 1;
+}
+
 function getProductos(req, res) {
   req.db.query('SELECT * FROM CAS_PRODUCTOS', (error, results) => {
     if (error) {
@@ -70,8 +86,12 @@ function updateProducto(req, res) {
     : null;
   const pro_descripcion = req.body?.pro_descripcion != null ? String(req.body.pro_descripcion) : null;
 
-  // Obtener producto actual para saber PRO_FILES y renombrar carpeta si cambia el título
-  req.db.query('SELECT PRO_NOMBRE, PRO_FILES FROM CAS_PRODUCTOS WHERE PRO_ID = ?', [id], (error, rows) => {
+  // Obtener producto actual para saber PRO_FILES, renombrar carpeta si cambia el título
+  // y comparar campo por campo para decidir si toca subir la versión.
+  const sqlActual = `SELECT PRO_NOMBRE, PRO_FILES, PRO_EXE, PRO_GRA_ID, PRO_TIPO,
+    PRO_NOMBRE_DETALLADO, PRO_DESCRIPCION, PRO_VERSION
+    FROM CAS_PRODUCTOS WHERE PRO_ID = ?`;
+  req.db.query(sqlActual, [id], (error, rows) => {
     if (error) {
       console.error('Error en updateProducto (SELECT):', error);
       return res.status(500).json({ error: 'Error en la base de datos', detalle: error.message });
@@ -109,8 +129,19 @@ function updateProducto(req, res) {
       }
     }
 
-    const sql = `UPDATE CAS_PRODUCTOS SET 
-      PRO_NOMBRE = ?, PRO_EXE = ?, PRO_GRA_ID = ?, PRO_TIPO = ?, PRO_FILES = ?, PRO_NOMBRE_DETALLADO = ?, PRO_DESCRIPCION = ?
+    // Basta con que cambie una letra de cualquier campo para que suba la versión.
+    // Si se guarda sin tocar nada, la versión se queda igual.
+    const huboCambios =
+      newProFiles !== oldProFiles ||
+      !mismoValor(pro_nombre, current.PRO_NOMBRE) ||
+      !mismoValor(pro_exe, current.PRO_EXE) ||
+      !mismoValor(pro_grado, current.PRO_GRA_ID) ||
+      !mismoValor(pro_tipo, current.PRO_TIPO) ||
+      !mismoValor(pro_nombre_detallado, current.PRO_NOMBRE_DETALLADO) ||
+      !mismoValor(pro_descripcion, current.PRO_DESCRIPCION);
+
+    const sql = `UPDATE CAS_PRODUCTOS SET
+      PRO_NOMBRE = ?, PRO_EXE = ?, PRO_GRA_ID = ?, PRO_TIPO = ?, PRO_FILES = ?, PRO_NOMBRE_DETALLADO = ?, PRO_DESCRIPCION = ?${huboCambios ? ',\n      PRO_VERSION = COALESCE(PRO_VERSION, 0) + 1' : ''}
       WHERE PRO_ID = ?`;
     const values = [pro_nombre, pro_exe, pro_grado, pro_tipo, newProFiles, pro_nombre_detallado, pro_descripcion, id];
 
@@ -122,7 +153,12 @@ function updateProducto(req, res) {
       if (result.affectedRows === 0) {
         return res.status(404).json({ detalle: 'Producto no encontrado' });
       }
-      res.status(200).json({ ok: true, affectedRows: result.affectedRows, pro_files: newProFiles });
+      res.status(200).json({
+        ok: true,
+        affectedRows: result.affectedRows,
+        pro_files: newProFiles,
+        pro_version: huboCambios ? siguienteVersion(current.PRO_VERSION) : current.PRO_VERSION,
+      });
     });
   });
 }
@@ -156,7 +192,7 @@ function addFilesToProducto(req, res) {
   }
 
   // Primero obtener el producto para saber su carpeta
-  req.db.query('SELECT PRO_FILES FROM CAS_PRODUCTOS WHERE PRO_ID = ?', [id], (error, results) => {
+  req.db.query('SELECT PRO_FILES, PRO_VERSION FROM CAS_PRODUCTOS WHERE PRO_ID = ?', [id], (error, results) => {
     if (error) {
       console.error('Error buscando producto:', error);
       return res.status(500).json({ detalle: error.message });
@@ -166,6 +202,7 @@ function addFilesToProducto(req, res) {
     }
 
     const proFiles = results[0].PRO_FILES;
+    const nuevaVersion = siguienteVersion(results[0].PRO_VERSION);
     const dir = getDirFromProFiles(proFiles);
     if (!dir) {
       return res.status(400).json({ detalle: 'El producto no tiene carpeta de archivos' });
@@ -192,34 +229,32 @@ function addFilesToProducto(req, res) {
       const primeraImagen = files.find((f) => (f.mimetype || '').startsWith('image/'));
       const proImagen = primeraImagen ? `${proFiles}/${primeraImagen.filename}` : null;
 
-      const sendResponse = (proImagenUpdated = null) => {
+      const sendResponse = (versionAplicada, proImagenUpdated = null) => {
         res.status(200).json({
           ok: true,
           archivosAgregados: nombres,
           totalArchivos: archivosActuales.length,
           archivos: archivosActuales,
+          ...(versionAplicada != null && { pro_version: versionAplicada }),
           ...(proImagenUpdated != null && { pro_imagen: proImagenUpdated }),
         });
       };
 
-      if (!proImagen) {
-        return sendResponse();
-      }
+      // Agregar archivos es un cambio de contenido: sube la versión.
+      // Si además llegó una imagen, se guarda en la misma sentencia.
+      const sql = proImagen
+        ? 'UPDATE CAS_PRODUCTOS SET PRO_IMAGEN = ?, PRO_VERSION = COALESCE(PRO_VERSION, 0) + 1 WHERE PRO_ID = ?'
+        : SQL_SUBIR_VERSION;
+      const values = proImagen ? [proImagen, id] : [id];
 
-      req.db.query(
-        'UPDATE CAS_PRODUCTOS SET PRO_IMAGEN = ? WHERE PRO_ID = ?',
-        [proImagen, id],
-        (updateErr) => {
-          if (updateErr) {
-            console.error('Error actualizando PRO_IMAGEN:', updateErr);
-            return res.status(500).json({
-              detalle: 'Archivos subidos, pero falló actualizar la imagen del producto',
-              archivosAgregados: nombres,
-            });
-          }
-          sendResponse(proImagen);
+      req.db.query(sql, values, (updateErr) => {
+        if (updateErr) {
+          console.error('Error actualizando el producto tras subir archivos:', updateErr);
+          // Los archivos ya quedaron en disco: se reporta el alta aunque la versión no subiera.
+          return sendResponse(null, null);
         }
-      );
+        sendResponse(nuevaVersion, proImagen);
+      });
     });
   });
 }
@@ -239,7 +274,7 @@ function deleteFileFromProducto(req, res) {
   // Sanitizar filename para evitar path traversal
   const safeFilename = path.basename(filename);
 
-  req.db.query('SELECT PRO_FILES FROM CAS_PRODUCTOS WHERE PRO_ID = ?', [id], (error, results) => {
+  req.db.query('SELECT PRO_FILES, PRO_VERSION FROM CAS_PRODUCTOS WHERE PRO_ID = ?', [id], (error, results) => {
     if (error) {
       console.error('Error buscando producto:', error);
       return res.status(500).json({ detalle: error.message });
@@ -249,6 +284,7 @@ function deleteFileFromProducto(req, res) {
     }
 
     const proFiles = results[0].PRO_FILES;
+    const nuevaVersion = siguienteVersion(results[0].PRO_VERSION);
     const dir = getDirFromProFiles(proFiles);
     if (!dir) {
       return res.status(400).json({ detalle: 'El producto no tiene carpeta de archivos' });
@@ -264,17 +300,26 @@ function deleteFileFromProducto(req, res) {
     // Eliminar archivo
     try {
       fs.unlinkSync(filePath);
-      const archivosActuales = getArchivosEnCarpeta(proFiles);
+    } catch (e) {
+      console.error('Error eliminando archivo:', e);
+      return res.status(500).json({ detalle: 'Error al eliminar el archivo' });
+    }
+
+    const archivosActuales = getArchivosEnCarpeta(proFiles);
+
+    // Quitar un archivo también cambia el contenido: sube la versión.
+    req.db.query(SQL_SUBIR_VERSION, [id], (updateErr) => {
+      if (updateErr) {
+        console.error('Error incrementando PRO_VERSION:', updateErr);
+      }
       res.status(200).json({
         ok: true,
         archivoEliminado: safeFilename,
         totalArchivos: archivosActuales.length,
         archivos: archivosActuales,
+        ...(updateErr ? {} : { pro_version: nuevaVersion }),
       });
-    } catch (e) {
-      console.error('Error eliminando archivo:', e);
-      res.status(500).json({ detalle: 'Error al eliminar el archivo' });
-    }
+    });
   });
 }
 

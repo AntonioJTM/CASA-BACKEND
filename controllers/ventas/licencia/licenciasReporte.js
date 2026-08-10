@@ -37,8 +37,7 @@ const COLUMNAS = [
     { header: 'Tipo', key: 'tipo', width: 14, tipo: 'texto' },
     { header: 'Estatus', key: 'statusLabel', width: 14, tipo: 'estatus' },
     { header: 'Tipo de venta', key: 'tipoVentaNombre', width: 20, tipo: 'texto' },
-    // Se pinta con el color de identidad del paquete (PAQ_COLOR), si tiene uno.
-    { header: 'Paquete', key: 'paqueteNombre', width: 24, tipo: 'paquete' },
+    { header: 'Paquete', key: 'paqueteNombre', width: 24, tipo: 'texto' },
     { header: 'Pedido', key: 'pedidoId', width: 10, tipo: 'numero' },
     { header: 'Bitácora', key: 'pedidoBitacora', width: 14, tipo: 'texto' },
     { header: 'Solicitante', key: 'pedidoSolicitante', width: 26, tipo: 'texto' },
@@ -57,30 +56,8 @@ const ALINEACION = {
     codigo: 'left',
     numero: 'right',
     fecha: 'center',
-    estatus: 'center',
-    paquete: 'left'
+    estatus: 'center'
 };
-
-/** '#RRGGBB' -> 'FFRRGGBB' (ARGB de ExcelJS), o null si no es un hexadecimal válido. */
-function aArgb(hex) {
-    if (!hex) return null;
-    const s = String(hex).trim().replace(/^#/, '');
-    return /^[0-9a-fA-F]{6}$/.test(s) ? `FF${s.toUpperCase()}` : null;
-}
-
-/**
- * Versión clara del color, para usarlo como fondo sin que el texto se pierda:
- * mezcla el tono con blanco al 88%, el equivalente al fondo tenue de la tabla.
- */
-function tonoSuave(hex) {
-    const argb = aArgb(hex);
-    if (!argb) return null;
-    const mezclar = (c) => Math.round(c + (255 - c) * 0.88);
-    const r = mezclar(parseInt(argb.slice(2, 4), 16));
-    const g = mezclar(parseInt(argb.slice(4, 6), 16));
-    const b = mezclar(parseInt(argb.slice(6, 8), 16));
-    return `FF${[r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
-}
 
 /** Convierte el valor de fecha del driver a un Date sin hora (o null si no aplica). */
 function aFecha(value) {
@@ -239,17 +216,6 @@ function crearReporteExcel(stream, filtros = {}) {
                 if (paleta) {
                     celda.font = { size: 10, bold: true, color: { argb: paleta.texto } };
                     celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: paleta.fondo } };
-                    return;
-                }
-            }
-
-            // El paquete se pinta con su color de identidad, el mismo que en el dashboard.
-            if (col.tipo === 'paquete') {
-                const fondo = tonoSuave(datos.paqueteColor);
-                const texto = aArgb(datos.paqueteColor);
-                if (fondo && texto) {
-                    celda.font = { size: 10, bold: true, color: { argb: texto } };
-                    celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fondo } };
                     return;
                 }
             }

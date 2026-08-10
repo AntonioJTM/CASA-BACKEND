@@ -1,16 +1,13 @@
-const { normalizarColorHex } = require('./colorPaquete');
-
 /**
  * Actualiza un paquete en CAS_PAQUETE.
  * PUT /paquetes/:id
- * Body: { nombre, descripcion, productoIds, [color] }
- * `color` es un hexadecimal '#RRGGBB'; enviarlo vacío o inválido deja el paquete sin color.
+ * Body: { nombre, descripcion, productoIds }
  * Emite evento Socket.IO 'paquete-actualizado' para actualización en tiempo real.
  */
 exports.updatePaquete = (req, res) => {
     try {
         const paqueteId = req.params.id;
-        const { nombre, descripcion, productoIds, color } = req.body;
+        const { nombre, descripcion, productoIds } = req.body;
 
         if (!paqueteId || isNaN(Number(paqueteId))) {
             return res.status(400).json({
@@ -46,7 +43,6 @@ exports.updatePaquete = (req, res) => {
             .filter(id => !Number.isNaN(id) && Number.isInteger(id) && id > 0);
         const nombreVal = nombre.toString().trim().substring(0, 100);
         const descripcionVal = descripcion.toString().trim().substring(0, 100);
-        const colorVal = normalizarColorHex(color);
         const productosJson = JSON.stringify(ids);
 
         req.db.query('SELECT PAQ_ID FROM CAS_PAQUETE WHERE PAQ_ID = ?', [paqueteId], (error, rows) => {
@@ -67,8 +63,8 @@ exports.updatePaquete = (req, res) => {
             }
 
             req.db.query(
-                'UPDATE CAS_PAQUETE SET PAQ_NOMBRE = ?, PAQ_DESCRIPCION = ?, PAQ_COLOR = ?, PAQ_PRODUCTOS = ? WHERE PAQ_ID = ?',
-                [nombreVal, descripcionVal, colorVal, productosJson, paqueteId],
+                'UPDATE CAS_PAQUETE SET PAQ_NOMBRE = ?, PAQ_DESCRIPCION = ?, PAQ_PRODUCTOS = ? WHERE PAQ_ID = ?',
+                [nombreVal, descripcionVal, productosJson, paqueteId],
                 (updateError) => {
                     if (updateError) {
                         console.error('Error al actualizar paquete:', updateError);
@@ -84,7 +80,6 @@ exports.updatePaquete = (req, res) => {
                             p.PAQ_ID AS id,
                             p.PAQ_NOMBRE AS nombre,
                             p.PAQ_DESCRIPCION AS descripcion,
-                            p.PAQ_COLOR AS color,
                             p.PAQ_PRODUCTOS AS productosJson,
                             p.PAQ_FECHA_REGISTRO AS fechaRegistro,
                             COALESCE(u.UAD_NOMBRE, 'Sin usuario') AS usuarioNombre,
@@ -104,7 +99,6 @@ exports.updatePaquete = (req, res) => {
                                         id: Number(paqueteId),
                                         nombre: nombreVal,
                                         descripcion: descripcionVal,
-                                        color: colorVal,
                                         productos: ids.map(id => ({ id, nombre: '' }))
                                     }
                                 });
@@ -126,7 +120,6 @@ exports.updatePaquete = (req, res) => {
                                     id: row.id,
                                     nombre: row.nombre,
                                     descripcion: row.descripcion,
-                                    color: row.color,
                                     fechaRegistro: row.fechaRegistro,
                                     usuarioNombre: row.usuarioNombre,
                                     uadId: row.uadId,

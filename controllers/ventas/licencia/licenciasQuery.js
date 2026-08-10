@@ -30,7 +30,6 @@ const SELECT_LICENCIAS = `
         COALESCE(v.VEN_NOMBRE, 'Sin tipo de venta') AS tipoVentaNombre,
         l.LIC_VEN_ID AS venId,
         COALESCE(paq.PAQ_NOMBRE, 'Sin paquete') AS paqueteNombre,
-        paq.PAQ_COLOR AS paqueteColor,
         l.LIC_PAQ_ID AS paqId,
         ped.PDD_BITACORA AS pedidoBitacora,
         ped.PDD_SISTEMA AS pedidoSistema,
