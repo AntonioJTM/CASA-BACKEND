@@ -549,7 +549,7 @@ async function enviarCorreoBienvenida({ correo, nombre, usuario, password }) {
                 <tr>
                     <td align="center" style="padding:30px 50px 30px 50px;">
                         <p style="color:#FFFFFF; font-size:20px;">
-                            Te recomendamos recordar tu contraseña.
+                            Te recomendamos guardar tu contraseña.
                         </p>
                     </td>
                 </tr>
@@ -565,7 +565,7 @@ async function enviarCorreoBienvenida({ correo, nombre, usuario, password }) {
     await transporter.sendMail({
         from: '"Casa Web" <contacto@metabooks.com.mx>',
         to: correo,
-        subject: 'Bienvenido a Casa Web',
+        subject: 'Credenciales de acceso Casa Web',
         html
     });
 }
