@@ -7,7 +7,7 @@
  *
  * Body: tipoVenta, tipoLicencia, indicio, fechaInicio, cantidadLicencias, paquete,
  *       tiempoDias, fechaVencimiento, cantidadCaracteres, pedidoBitacora, solicitante,
- *       [uadId] (opcional, por defecto 1), [sessionId]
+ *       uadId (usuario que las genera; requerido salvo que el token lo aporte), [sessionId]
  *
  * Socket (progreso en tiempo real):
  * - Frontend debe unirse a la sala: socket.emit('join-license-room', sessionId)
@@ -272,9 +272,24 @@ exports.generarLicencias = (req, res) => {
             ? solicitante.toString().trim().substring(0, 100) 
             : '';
         
-        const licUadId = (uadId != null && uadId !== '')
-            ? Number(uadId)
-            : ((req.user && (req.user.userId ?? req.user.id)) || 1);
+        /**
+         * Creador de las licencias (y del pedido, si se crea uno): lo manda el front
+         * con el usuario de la sesión, o sale del token si la ruta llevara middleware
+         * de autenticación. Antes, al faltar ambos, caía en el ID 1 y todo quedaba
+         * atribuido a ese usuario sin que se notara; ahora se rechaza la petición.
+         */
+        const uadIdNum = (uadId != null && uadId !== '') ? Number(uadId) : NaN;
+        const licUadId = (Number.isInteger(uadIdNum) && uadIdNum > 0)
+            ? uadIdNum
+            : ((req.user && (req.user.userId ?? req.user.id)) || null);
+
+        if (licUadId == null) {
+            return res.status(400).json({
+                success: false,
+                status: 'BAD_REQUEST',
+                message: 'El campo uadId es requerido: no se puede registrar quién generó las licencias'
+            });
+        }
 
         // Si viene pedidoId, es una ampliación: las licencias se cuelgan de ese pedido.
         const pedidoIdNum = pedidoId != null && pedidoId !== '' ? Number(pedidoId) : null;
@@ -346,7 +361,7 @@ exports.generarLicencias = (req, res) => {
                         p.PDD_BITACORA AS bitacora,
                         p.PDD_SISTEMA AS sistema,
                         p.PDD_SOLICITANTE AS solicitante,
-                        p.PPD_FECHA_REGISTRO AS fechaRegistro,
+                        p.PDD_FECHA_REGISTRO AS fechaRegistro,
                         COALESCE(u.UAD_NOMBRE, 'Sin usuario') AS usuarioNombre,
                         p.PDD_UAD_ID AS uadId
                     FROM CAS_PEDIDO p
