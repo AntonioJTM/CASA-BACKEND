@@ -171,3 +171,54 @@ exports.allPorTipoMultimedia = (req, res) => {
         });
     }
 };
+
+
+exports.allGradosPorLicencia = (req, res) => {
+    try {
+        const { licenciaId } = req.body;
+
+        const query = 'CALL mostrarGradosPorLicencia(?)';
+
+        req.db.query(query, [licenciaId], (error, results) => {
+            if (error) {
+                console.error('Error en la consulta de mostrarGradosPorLicencia:', error);
+                return res.status(500).json({
+                    error: 'Error al obtener la multimedia',
+                    details: error.message
+                });
+            }
+            res.json(results[0]);
+        });
+    } catch (error) {
+        console.error('Error en la ruta de allGradosPorLicencia:', error);
+        res.status(500).json({
+            error: 'Error interno del servidor',
+            details: error.message
+        });
+    }
+};
+
+exports.allMateriasPorLicenciaGrado = (req, res) => {
+    try {
+        const { licenciaId, gradoId } = req.body;
+
+        const query = 'CALL mostrarMateriasPorLicenciaGrado(?,?)';
+
+        req.db.query(query, [licenciaId, gradoId], (error, results) => {
+            if (error) {
+                console.error('Error en la consulta de mostrarMateriasPorLicenciaGrado:', error);
+                return res.status(500).json({
+                    error: 'Error al obtener la multimedia',
+                    details: error.message
+                });
+            }
+            res.json(results[0]);
+        });
+    } catch (error) {
+        console.error('Error en la ruta de allMateriasPorLicenciaGrado:', error);
+        res.status(500).json({
+            error: 'Error interno del servidor',
+            details: error.message
+        });
+    }
+};
