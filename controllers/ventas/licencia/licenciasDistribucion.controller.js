@@ -1,5 +1,8 @@
-/** El dashboard de ventas solo contempla licencias individuales */
-const TIPO_LICENCIA = 'INDIVIDUAL';
+/**
+ * Tipos que contempla el dashboard de ventas. Deben coincidir con los que
+ * muestra su tabla de licencias, o los contadores no cuadrarían con la lista.
+ */
+const TIPOS_LICENCIA = ['INDIVIDUAL', 'PRESENTACIONES'];
 
 const sqlDistribucion = `
     SELECT
@@ -11,7 +14,7 @@ const sqlDistribucion = `
         END AS status,
         COUNT(*) AS count
     FROM CAS_LICENCIA
-    WHERE LIC_TIPO = ?
+    WHERE LIC_TIPO IN (${TIPOS_LICENCIA.map(() => '?').join(',')})
     GROUP BY LIC_STATUS
 `;
 
@@ -20,7 +23,7 @@ const sqlDistribucion = `
  * Útil para actualización en tiempo real del dashboard.
  */
 exports.fetchDistribucion = (db, callback) => {
-    db.query(sqlDistribucion, [TIPO_LICENCIA], (err, rows) => {
+    db.query(sqlDistribucion, TIPOS_LICENCIA, (err, rows) => {
         if (err) return callback(err, null);
         const porEstado = rows || [];
         const total = porEstado.reduce((sum, row) => sum + (row.count || 0), 0);
@@ -35,7 +38,7 @@ exports.fetchDistribucion = (db, callback) => {
  * LIC_STATUS: 1=Activa, 2=Desactivada, 3=Vencida
  */
 exports.getLicenciasDistribucion = (req, res) => {
-    req.db.query(sqlDistribucion, [TIPO_LICENCIA], (err, rows) => {
+    req.db.query(sqlDistribucion, TIPOS_LICENCIA, (err, rows) => {
         if (err) {
             console.error('Error getLicenciasDistribucion:', err);
             return res.status(500).json({

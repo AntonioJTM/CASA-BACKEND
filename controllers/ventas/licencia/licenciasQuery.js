@@ -82,9 +82,20 @@ function buildFiltrosLicencias(filtros = {}) {
     const condiciones = [];
     const params = [];
 
+    // `tipo` acepta uno o varios valores separados por coma: 'PRESENTACIONES,GENERICA'
+    // permite seguir viendo las genéricas históricas junto a las nuevas.
     if (filtros.tipo != null && filtros.tipo !== '') {
-        condiciones.push('l.LIC_TIPO = ?');
-        params.push(String(filtros.tipo).trim());
+        const tipos = String(filtros.tipo)
+            .split(',')
+            .map((t) => t.trim())
+            .filter((t) => t !== '');
+        if (tipos.length === 1) {
+            condiciones.push('l.LIC_TIPO = ?');
+            params.push(tipos[0]);
+        } else if (tipos.length > 1) {
+            condiciones.push(`l.LIC_TIPO IN (${tipos.map(() => '?').join(',')})`);
+            params.push(...tipos);
+        }
     }
 
     const status = normalizarStatus(filtros.status);

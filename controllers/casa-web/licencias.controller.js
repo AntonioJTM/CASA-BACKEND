@@ -53,13 +53,39 @@ const PALABRAS_PROHIBIDAS = new Set([
 
 
 
+/**
+ * Valida una licencia por tipo.
+ *
+ * `tipo` acepta uno o varios valores separados por coma. Hace falta porque las
+ * licencias que antes se generaban como 'GENERICA' ahora se llaman
+ * 'PRESENTACIONES': las emitidas antes del cambio deben seguir validando.
+ *
+ * Replica lo que hace sp_existe_licencia (misma forma de respuesta: RESPONSE y
+ * LIC_ID en una sola fila), pero comparando contra varios tipos.
+ */
 exports.existLicence = (req, res) => {
     try {
         const { tipo, licencia } = req.body;
 
-        const query = 'CALL sp_existe_licencia(?,?)';
+        const tipos = String(tipo ?? '')
+            .split(',')
+            .map((t) => t.trim())
+            .filter((t) => t !== '');
 
-        req.db.query(query, [tipo, licencia], (error, results) => {
+        if (tipos.length === 0 || !licencia) {
+            return res.json([{ RESPONSE: 'NO', LIC_ID: null }]);
+        }
+
+        const query = `
+            SELECT
+                CASE WHEN COUNT(*) > 0 THEN 'SI' ELSE 'NO' END AS RESPONSE,
+                MAX(LIC_ID) AS LIC_ID
+            FROM CAS_LICENCIA
+            WHERE LIC_LICENCIA = ?
+              AND LIC_TIPO IN (${tipos.map(() => '?').join(',')})
+              AND LIC_STATUS = 1`;
+
+        req.db.query(query, [licencia, ...tipos], (error, results) => {
             if (error) {
                 console.error('Error en la consulta de existe Licencia:', error);
                 return res.status(500).json({
@@ -67,7 +93,7 @@ exports.existLicence = (req, res) => {
                     details: error.message
                 });
             }
-            res.json(results[0]);
+            res.json(Array.isArray(results) ? results : []);
         });
     } catch (error) {
         console.error('Error en la ruta de existLicence:', error);

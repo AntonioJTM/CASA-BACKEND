@@ -55,7 +55,13 @@ function siguienteVersion(versionActual) {
 }
 
 function getProductos(req, res) {
-  req.db.query('SELECT * FROM CAS_PRODUCTOS', (error, results) => {
+  // Se trae el nombre de la materia junto al producto para no obligar al front
+  // a cruzar el catálogo por su cuenta.
+  const sql = `
+    SELECT p.*, m.MAT_NOMBRE AS PRO_MAT_NOMBRE
+    FROM CAS_PRODUCTOS p
+    LEFT JOIN CAS_MATERIA m ON p.PRO_MAT_ID = m.MAT_ID`;
+  req.db.query(sql, (error, results) => {
     if (error) {
       console.error('Error en getProductos:', error);
       return res.status(500).json({
@@ -80,6 +86,9 @@ function updateProducto(req, res) {
   const pro_nombre = req.body?.pro_nombre != null ? String(req.body.pro_nombre).trim() : null;
   const pro_exe = req.body?.pro_exe != null ? String(req.body.pro_exe).trim() : null;
   const pro_grado = req.body?.pro_grado != null ? parseInt(req.body.pro_grado, 10) : null;
+  // Materia del semestre seleccionado (CAS_MATERIA.MAT_ID).
+  const matId = req.body?.pro_mat_id != null ? parseInt(req.body.pro_mat_id, 10) : NaN;
+  const pro_mat_id = Number.isInteger(matId) && matId > 0 ? matId : null;
   const pro_tipo = req.body?.pro_tipo != null ? String(req.body.pro_tipo) : null;
   const pro_nombre_detallado = req.body?.pro_nombre_detallado != null
     ? String(req.body.pro_nombre_detallado).trim().slice(0, 100)
@@ -88,7 +97,7 @@ function updateProducto(req, res) {
 
   // Obtener producto actual para saber PRO_FILES, renombrar carpeta si cambia el título
   // y comparar campo por campo para decidir si toca subir la versión.
-  const sqlActual = `SELECT PRO_NOMBRE, PRO_FILES, PRO_EXE, PRO_GRA_ID, PRO_TIPO,
+  const sqlActual = `SELECT PRO_NOMBRE, PRO_FILES, PRO_EXE, PRO_GRA_ID, PRO_MAT_ID, PRO_TIPO,
     PRO_NOMBRE_DETALLADO, PRO_DESCRIPCION, PRO_VERSION
     FROM CAS_PRODUCTOS WHERE PRO_ID = ?`;
   req.db.query(sqlActual, [id], (error, rows) => {
@@ -136,14 +145,15 @@ function updateProducto(req, res) {
       !mismoValor(pro_nombre, current.PRO_NOMBRE) ||
       !mismoValor(pro_exe, current.PRO_EXE) ||
       !mismoValor(pro_grado, current.PRO_GRA_ID) ||
+      !mismoValor(pro_mat_id, current.PRO_MAT_ID) ||
       !mismoValor(pro_tipo, current.PRO_TIPO) ||
       !mismoValor(pro_nombre_detallado, current.PRO_NOMBRE_DETALLADO) ||
       !mismoValor(pro_descripcion, current.PRO_DESCRIPCION);
 
     const sql = `UPDATE CAS_PRODUCTOS SET
-      PRO_NOMBRE = ?, PRO_EXE = ?, PRO_GRA_ID = ?, PRO_TIPO = ?, PRO_FILES = ?, PRO_NOMBRE_DETALLADO = ?, PRO_DESCRIPCION = ?${huboCambios ? ',\n      PRO_VERSION = COALESCE(PRO_VERSION, 0) + 1' : ''}
+      PRO_NOMBRE = ?, PRO_EXE = ?, PRO_GRA_ID = ?, PRO_MAT_ID = ?, PRO_TIPO = ?, PRO_FILES = ?, PRO_NOMBRE_DETALLADO = ?, PRO_DESCRIPCION = ?${huboCambios ? ',\n      PRO_VERSION = COALESCE(PRO_VERSION, 0) + 1' : ''}
       WHERE PRO_ID = ?`;
-    const values = [pro_nombre, pro_exe, pro_grado, pro_tipo, newProFiles, pro_nombre_detallado, pro_descripcion, id];
+    const values = [pro_nombre, pro_exe, pro_grado, pro_mat_id, pro_tipo, newProFiles, pro_nombre_detallado, pro_descripcion, id];
 
     req.db.query(sql, values, (err, result) => {
       if (err) {

@@ -49,7 +49,11 @@ function escaparCampo(value, separador) {
 function nombreArchivo(filtros, extension) {
     const fecha = new Date().toISOString().slice(0, 10);
     if (filtros.pedidoId) return `licencias_pedido_${filtros.pedidoId}_${fecha}.${extension}`;
-    if (filtros.tipo) return `licencias_${String(filtros.tipo).toLowerCase()}_${fecha}.${extension}`;
+    if (filtros.tipo) {
+        // `tipo` puede traer varios valores; se unen con guion para el nombre del archivo.
+        const etiqueta = String(filtros.tipo).toLowerCase().split(',').map((t) => t.trim()).filter(Boolean).join('-');
+        return `licencias_${etiqueta}_${fecha}.${extension}`;
+    }
     return `licencias_${fecha}.${extension}`;
 }
 

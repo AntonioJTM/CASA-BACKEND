@@ -83,13 +83,16 @@ function uploadProd(req, res) {
       : null;
     const proDescripcion = req.body.pro_descripcion != null ? String(req.body.pro_descripcion) : null;
     const proGrado = req.body.pro_grado || null;
+    // Materia del semestre seleccionado (CAS_MATERIA.MAT_ID).
+    const matId = parseInt(req.body.pro_mat_id, 10);
+    const proMateria = Number.isInteger(matId) && matId > 0 ? matId : null;
     const proExe = req.body.pro_exe || null;
     const proTipo = req.body.pro_tipo || null;
     const proVersion = 1;
 
-    const sql = `INSERT INTO CAS_PRODUCTOS (PRO_NOMBRE, PRO_NOMBRE_DETALLADO, PRO_DESCRIPCION, PRO_GRA_ID, PRO_EXE, PRO_IMAGEN, PRO_TIPO, PRO_FILES, PRO_VERSION)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const values = [proNombre, proNombreDetallado, proDescripcion, proGrado, proExe, proImagen, proTipo, carpeta, proVersion];
+    const sql = `INSERT INTO CAS_PRODUCTOS (PRO_NOMBRE, PRO_NOMBRE_DETALLADO, PRO_DESCRIPCION, PRO_GRA_ID, PRO_MAT_ID, PRO_EXE, PRO_IMAGEN, PRO_TIPO, PRO_FILES, PRO_VERSION)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const values = [proNombre, proNombreDetallado, proDescripcion, proGrado, proMateria, proExe, proImagen, proTipo, carpeta, proVersion];
 
     req.db.query(sql, values, (error, result) => {
       if (error) {
@@ -114,6 +117,7 @@ function uploadProd(req, res) {
         pro_titulo: proNombre,
         pro_nombre: proNombre,
         pro_grado: proGrado,
+        pro_mat_id: proMateria,
         pro_exe: proExe,
         pro_tipo: proTipo,
         pro_nombre_detallado: proNombreDetallado,
