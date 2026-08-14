@@ -13,9 +13,9 @@ const nodemailer = require('nodemailer');
 
 //********* PROUDUCCION ************ */
 const transporter = nodemailer.createTransport({
-    host: 'mail.metabooks.com.mx', 
+    host: 'mail.metabooks.com.mx',
     port: 465,
-    secure: true, 
+    secure: true,
     auth: {
         user: 'contacto@metabooks.com.mx',
         pass: 'DyLPcBnbrzFct8jF'
@@ -73,17 +73,19 @@ exports.existLicence = (req, res) => {
             .filter((t) => t !== '');
 
         if (tipos.length === 0 || !licencia) {
-            return res.json([{ RESPONSE: 'NO', LIC_ID: null }]);
+            return res.json([{ RESPONSE: 'NO', LIC_ID: null, LIC_TIPO: null }]);
         }
 
         const query = `
-            SELECT
-                CASE WHEN COUNT(*) > 0 THEN 'SI' ELSE 'NO' END AS RESPONSE,
-                MAX(LIC_ID) AS LIC_ID
-            FROM CAS_LICENCIA
-            WHERE LIC_LICENCIA = ?
-              AND LIC_TIPO IN (${tipos.map(() => '?').join(',')})
-              AND LIC_STATUS = 1`;
+    SELECT
+        CASE WHEN COUNT(*) > 0 THEN 'SI' ELSE 'NO' END AS RESPONSE,
+        MAX(LIC_ID) AS LIC_ID,
+        MAX(LIC_TIPO) AS LIC_TIPO
+    FROM CAS_LICENCIA
+    WHERE LIC_LICENCIA = ?
+      AND LIC_TIPO IN (${tipos.map(() => '?').join(',')})
+      AND LIC_STATUS = 1`;
+
 
         req.db.query(query, [licencia, ...tipos], (error, results) => {
             if (error) {
