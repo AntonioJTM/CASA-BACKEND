@@ -55,6 +55,7 @@ module.exports = () => {
 
     router.get('/filter-grados', filtros.getGradosFilter);
     router.get('/filter-subtipos', filtros.getSubtipoFilter);
+    router.get('/filter-subsistemas', filtros.getSubsistemasFilter);
     router.get('/filter-materias', filtros.getMateriasFilter);
     router.get('/countabs', getCountabs);
 
@@ -62,7 +63,9 @@ module.exports = () => {
 
     router.get('/productos', getProductos);
     router.get('/materias', materiasController.getTodasMaterias);
-    router.post('/materias', materiasController.addMateria);
+    router.post('/materias', materiasController.subirPortada, materiasController.addMateria);
+    router.put('/materias/:id', materiasController.subirPortada, materiasController.updateMateria);
+    router.delete('/materias/:id', materiasController.deleteMateria);
 
     
     router.get('/productos/archivos', (req, res) => {
