@@ -28,6 +28,7 @@ const { exportarLicencias } = require('../controllers/ventas/licencia/exportarLi
 const { getPedidosCompletos } = require('../controllers/ventas/pedido/pedidosCompletos.controller');
 const { getPlantillaLicenciaPedido } = require('../controllers/ventas/pedido/plantillaLicenciaPedido.controller');
 const materiasController = require('../controllers/ADMIN/multimedia/materias.controllers');
+const { crearSemestres } = require('../controllers/ADMIN/multimedia/grados.controllers');
 
 module.exports = () => {
 
@@ -56,6 +57,7 @@ module.exports = () => {
     router.get('/filter-grados', filtros.getGradosFilter);
     router.get('/filter-subtipos', filtros.getSubtipoFilter);
     router.get('/filter-subsistemas', filtros.getSubsistemasFilter);
+    router.post('/subsistemas/:id/semestres', crearSemestres);
     router.get('/filter-materias', filtros.getMateriasFilter);
     router.get('/countabs', getCountabs);
 

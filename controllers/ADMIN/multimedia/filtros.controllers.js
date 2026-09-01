@@ -3,9 +3,15 @@ exports.getGradosFilter = async (req, res) => {
         // ?subsistema=1 acota los periodos a los de ese subsistema (GRA_SUB_ID).
         const sub = parseInt(req.query.subsistema, 10);
         const filtra = Number.isInteger(sub) && sub > 0;
+        // SUB_NOMBRE viaja con cada semestre: ahora que todos los subsistemas
+        // tienen su 1° a 6°, sin él las listas mostrarían "1 Semestre" repetido.
+        const base = `
+            SELECT g.*, s.SUB_NOMBRE
+              FROM CAS_GRADO g
+              LEFT JOIN CAS_SUBSISTEMA s ON s.SUB_ID = g.GRA_SUB_ID`;
         const sql = filtra
-            ? 'SELECT * FROM CAS_GRADO WHERE GRA_SUB_ID = ? ORDER BY GRA_NUMERO'
-            : 'SELECT * FROM CAS_GRADO ORDER BY GRA_SUB_ID, GRA_NUMERO';
+            ? `${base} WHERE g.GRA_SUB_ID = ? ORDER BY g.GRA_NUMERO`
+            : `${base} ORDER BY s.SUB_NOMBRE, g.GRA_NUMERO`;
 
         req.db.query(sql, filtra ? [sub] : [],
             (error, results) => {
@@ -58,18 +64,22 @@ exports.getMateriasFilter = async (req, res) => {
             });
         }
 
+        // Una materia puede estar en varios semestres: la relación vive en
+        // CAS_GRADO_MATERIA, no en MAT_GRA_ID. Se devuelve el semestre pedido
+        // como MAT_GRA_ID para no cambiar la forma de la respuesta.
         const sql = `
-            SELECT
-                MAT_ID,
-                MAT_NOMBRE,
-                MAT_GRA_ID,
-                MAT_STATUS
-            FROM CAS_MATERIA
-            WHERE MAT_GRA_ID = ?
-            ORDER BY MAT_NOMBRE;
+            SELECT DISTINCT
+                m.MAT_ID,
+                m.MAT_NOMBRE,
+                ? AS MAT_GRA_ID,
+                m.MAT_STATUS
+            FROM CAS_MATERIA m
+            INNER JOIN CAS_GRADO_MATERIA gm ON gm.GMA_MAT_ID = m.MAT_ID
+            WHERE gm.GMA_GRA_ID = ?
+            ORDER BY m.MAT_NOMBRE;
         `;
 
-        req.db.query(sql, [gradoId], (error, results) => {
+        req.db.query(sql, [gradoId, gradoId], (error, results) => {
             if (error) {
                 console.error('Error en getMateriasFilter:', error);
                 return res.status(500).json({

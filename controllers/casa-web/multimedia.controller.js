@@ -74,21 +74,41 @@ exports.allMultimediaSubtipo = (req, res) => {
     }
 };
 
+/**
+ * Materias de un semestre.
+ *
+ * Antes era CALL mostrarMaterias(?). La consulta vive aquí porque una materia
+ * puede impartirse en varios semestres y esa relación está en
+ * CAS_GRADO_MATERIA, no en MAT_GRA_ID. Las columnas devueltas son las mismas
+ * que traía el SELECT * del procedimiento; MAT_GRA_ID es el semestre pedido.
+ */
 exports.allMaterias = (req, res) => {
     try {
         const { grado } = req.body;
 
-        const query = 'CALL mostrarMaterias(?)';
+        const query = `
+            SELECT DISTINCT
+                m.MAT_ID,
+                m.MAT_NOMBRE,
+                m.MAT_DESCRIPCION,
+                m.MAT_PORTADA,
+                ? AS MAT_GRA_ID,
+                m.MAT_SUB_ID,
+                m.MAT_STATUS
+            FROM CAS_MATERIA m
+            INNER JOIN CAS_GRADO_MATERIA gm ON gm.GMA_MAT_ID = m.MAT_ID
+            WHERE gm.GMA_GRA_ID = ?
+            ORDER BY m.MAT_NOMBRE`;
 
-        req.db.query(query, [grado], (error, results) => {
+        req.db.query(query, [grado, grado], (error, results) => {
             if (error) {
-                console.error('Error en la consulta de mostrarMaterias:', error);
+                console.error('Error en la consulta de materias por grado:', error);
                 return res.status(500).json({
                     error: 'Error al obtener las materias',
                     details: error.message
                 });
             }
-            res.json(results[0]);
+            res.json(results);
         });
     } catch (error) {
         console.error('Error en la ruta de allMaterias:', error);
@@ -198,21 +218,49 @@ exports.allGradosPorLicencia = (req, res) => {
     }
 };
 
+/**
+ * Materias de un semestre que cubre el paquete de una licencia.
+ *
+ * Antes era CALL mostrarMateriasPorLicenciaGrado(?,?). Igual que allMaterias,
+ * el semestre se resuelve por CAS_GRADO_MATERIA. Los JOINs de licencia, paquete
+ * y producto y las columnas devueltas son los mismos que traía el procedimiento.
+ */
 exports.allMateriasPorLicenciaGrado = (req, res) => {
     try {
         const { licenciaId, gradoId } = req.body;
 
-        const query = 'CALL mostrarMateriasPorLicenciaGrado(?,?)';
+        const query = `
+            SELECT DISTINCT
+                m.MAT_ID,
+                m.MAT_NOMBRE,
+                m.MAT_DESCRIPCION,
+                ? AS MAT_GRA_ID,
+                m.MAT_STATUS
+            FROM CAS_LICENCIA l
+            INNER JOIN CAS_PAQUETE pq
+                ON pq.PAQ_ID = l.LIC_PAQ_ID
+            INNER JOIN CAS_PRODUCTOS pr
+                ON FIND_IN_SET(
+                     pr.PRO_ID,
+                     REPLACE(REPLACE(REPLACE(pq.PAQ_PRODUCTOS, '[', ''), ']', ''), ' ', '')
+                   ) > 0
+            INNER JOIN CAS_MATERIA m
+                ON m.MAT_ID = pr.PRO_MAT_ID
+            INNER JOIN CAS_GRADO_MATERIA gm
+                ON gm.GMA_MAT_ID = m.MAT_ID
+               AND gm.GMA_GRA_ID = ?
+            WHERE l.LIC_ID = ?
+            ORDER BY m.MAT_NOMBRE`;
 
-        req.db.query(query, [licenciaId, gradoId], (error, results) => {
+        req.db.query(query, [gradoId, gradoId, licenciaId], (error, results) => {
             if (error) {
-                console.error('Error en la consulta de mostrarMateriasPorLicenciaGrado:', error);
+                console.error('Error en la consulta de materias por licencia y grado:', error);
                 return res.status(500).json({
-                    error: 'Error al obtener la multimedia',
+                    error: 'Error al obtener las materias',
                     details: error.message
                 });
             }
-            res.json(results[0]);
+            res.json(results);
         });
     } catch (error) {
         console.error('Error en la ruta de allMateriasPorLicenciaGrado:', error);
